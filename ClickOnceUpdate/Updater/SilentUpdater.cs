@@ -45,8 +45,6 @@ namespace ClickOnceUpdate.Updater
             if (!ApplicationDeployment.IsNetworkDeployed)
                 return;
             applicationDeployment = ApplicationDeployment.CurrentDeployment;
-            applicationDeployment.CheckForUpdateCompleted += CheckForUpdateCompleted;
-            applicationDeployment.CheckForUpdateProgressChanged += CheckForUpdateProgressChanged;
             applicationDeployment.UpdateCompleted += UpdateCompleted;
             applicationDeployment.UpdateProgressChanged += UpdateProgressChanged;
             timer.Elapsed += (sender, args) =>
@@ -54,25 +52,20 @@ namespace ClickOnceUpdate.Updater
                                      if (processing)
                                          return;
                                      processing = true;
-                                     applicationDeployment.CheckForUpdateAsync();
+                                     try
+                                     {
+                                         if (applicationDeployment.CheckForUpdate(false))
+                                             applicationDeployment.UpdateAsync();
+                                         else
+                                             processing = false;
+                                     }
+                                     catch(Exception ex)
+                                     {
+                                         Debug.WriteLine("Check for update failed. " + ex.Message);
+                                         processing = false;
+                                     }
                                  };
             timer.Start();
-        }
-
-        void CheckForUpdateProgressChanged(object sender, DeploymentProgressChangedEventArgs e)
-        {
-            //String.Format("Downloading: {0}. {1:D}K of {2:D}K downloaded.", GetProgressString(e.State), e.BytesCompleted / 1024, e.BytesTotal / 1024);
-        }
-
-        void CheckForUpdateCompleted(object sender, CheckForUpdateCompletedEventArgs e)
-        {
-            if (e.Error != null || e.Cancelled || !e.UpdateAvailable)
-            {
-                Debug.WriteLine("Check for update failed.");
-                processing = false;
-                return;
-            }
-            applicationDeployment.UpdateAsync();
         }
 
         void UpdateProgressChanged(object sender, DeploymentProgressChangedEventArgs e)
